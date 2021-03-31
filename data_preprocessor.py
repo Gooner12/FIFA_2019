@@ -115,7 +115,7 @@ class ValueImputer(Transformer):
         # selecting the a portion of the dataframe that has missing values in 2021 but not in 2019 for same records
         df_2019_not_null = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNull()))
 
-        # imputing the missing values in Values_2021(M) for different age groups based on the value growth seen for respective groups
+        # imputing the missing values in Values_2021(M) for different age groups based on the value growth seen for respective groups which was calculated earlier
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', F.when(F.col('Age') <= 20, \
                                                                                F.round(
                                                                                    F.col('Value_2019(M)') * (1 + age_under_21_float),
