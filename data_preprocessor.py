@@ -1,3 +1,4 @@
+# check
 from pyspark.ml import Transformer
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
@@ -61,6 +62,9 @@ class UnifyValue(Transformer):
         # combining the dataframes to get one complete dataframe
         df = df_non_k.union(df_k).union(df_null)
 
+        # changing the datatype of Value_2019(M) column to float
+        df = df.withColumn('Value_2019(M)', df['Value_2019(M)'].cast('float'))
+
         return df
 
 
@@ -112,10 +116,10 @@ class ValueImputer(Transformer):
         if (age_greater_40_float is None):
             age_greater_40_float = 0
 
-        # selecting the a portion of the dataframe that has missing values in 2021 but not in 2019 for same records
+        # selecting the portion of the dataframe that has missing values in 2021 but not in 2019 for same records
         df_2019_not_null = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNull()))
 
-        # imputing the missing values in Values_2021(M) for different age groups based on the value growth seen for respective groups which was calculated earlier
+        # imputing the missing values in Values_2021(M) for different age groups based on the value growth seen for respective groups
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', F.when(F.col('Age') <= 20, \
                                                                                F.round(
                                                                                    F.col('Value_2019(M)') * (1 + age_under_21_float),
@@ -144,7 +148,7 @@ class ValueImputer(Transformer):
 
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', \
                                                        F.when(F.col('Age') > 40, \
-                                                              F.round(F.col('Value_2019(M)') * (1 + age_greater_40_float))). \
+                                                              F.round(F.col('Value_2019(M)') * (1+ age_greater_40_float))). \
                                                        otherwise(F.col('Value_2021(M)')))
 
         # selecting a portion of the dataframe where players values are missing in both 2019 and 2021
@@ -181,7 +185,7 @@ class ValueImputer(Transformer):
                                                        otherwise(F.col('Value_2019(M)')))
 
         df_2021_not_null = df_2021_not_null.withColumn('Value_2019(M)', F.when(F.col('Age') > 40, \
-                                                                               F.round(F.col('Value_2021(M)') / (1 + age_greater_40_float))). \
+                                                                               F.round(F.col('Value_2021(M)') / (1+age_greater_40_float))). \
                                                        otherwise(F.col('Value_2019(M)')))
 
         # selecting a portion of the dataframe where no missing values are present in both 2019 and 2021 for players
