@@ -1,5 +1,6 @@
 from pyspark.ml import Transformer
 from pyspark.sql import DataFrame
+from pyspark.sql.functions import when, col
 
 # defining a custom transformer to perform label encoding for players' position group
 class LabelEncoder(Transformer):
