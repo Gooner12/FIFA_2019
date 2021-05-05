@@ -14,8 +14,12 @@ class LabelEncoder(Transformer):
         #self.position_group = position_group
 
     def _transform(self, df: DataFrame) -> DataFrame:
-        df = df.withColumn('Target',when(col('Position_Group') == 'DEF', 1).when(col('Position_Group')== 'FWD', 0)\
-      .otherwise(2))
+        if('Position_Group' in df.columns):
+            df = df.withColumn('Target',when(col('Position_Group') == 'DEF', 1).when(col('Position_Group')== 'FWD', 0)\
+          .otherwise(2))
+        elif('Growth_Level in df.columns'):
+            df = df.withColumn('Target_Growth', when(col('Growth_Level') == 'No_Growth', 0).when(col('Growth_Level') == 'Mid_Growth', 1) \
+                               .otherwise(2))
         return df
 
 
