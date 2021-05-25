@@ -6,10 +6,12 @@ from pyspark.ml import Transformer
 from pyspark.sql import DataFrame
 from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.sql.functions import udf
+from pyspark import keyword_only
 
 
 class SMOTEMultiClassBalancer(Transformer):
 
+    @keyword_only
     def __init__(self, target, k=5, minority_class=1, majority_class=0, \
                  upsample_percentage=100, downsample_percentage=50):
 
