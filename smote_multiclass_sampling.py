@@ -10,10 +10,10 @@ from pyspark.sql.functions import udf
 
 class SMOTEMultiClassBalancer(Transformer):
 
-    def __init__(self, df, target, k=5, minority_class=1, majority_class=0, \
+    def __init__(self, target, k=5, minority_class=1, majority_class=0, \
                  upsample_percentage=100, downsample_percentage=50):
 
-        self.df = df
+        self.df = None
         self.target = target
         self.k = k
         self.minority_class = minority_class
