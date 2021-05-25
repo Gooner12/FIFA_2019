@@ -2,11 +2,13 @@ import random
 import numpy as np
 from pyspark.sql import Row
 from sklearn import neighbors
+from pyspark.ml import Transformer
+from pyspark.sql import DataFrame
 from pyspark.ml.linalg import Vectors, VectorUDT
 from pyspark.sql.functions import udf
 
 
-class SMOTEMultiClassBalancer:
+class SMOTEMultiClassBalancer(Transformer):
 
     def __init__(self, df, target, k=5, minority_class=1, majority_class=0, \
                  upsample_percentage=100, downsample_percentage=50):
@@ -25,6 +27,11 @@ class SMOTEMultiClassBalancer:
         self.new_index = 0
         self.converted_feature_array = []
         self.converted_index = 0
+        super(SMOTEMultiClassBalancer, self).__init__()
+
+    def _transform(self, df: DataFrame) -> DataFrame:
+        self.df = df
+        return self.smote_sampler()
 
     def smote_sampler(self):
         if (self.downsample_percentage > 100 | self.downsample_percentage < 15):
