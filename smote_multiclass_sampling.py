@@ -12,10 +12,11 @@ from pyspark import keyword_only
 class SMOTEMultiClassBalancer(Transformer):
 
     @keyword_only
-    def __init__(self, target, k=5, minority_class=1, majority_class=0, \
+    def __init__(self, spark_context, target, k=5, minority_class=1, majority_class=0, \
                  upsample_percentage=100, downsample_percentage=50):
 
         self.df = None
+        self.spark_context = spark_context
         self.target = target
         self.k = k
         self.minority_class = minority_class
@@ -107,7 +108,7 @@ class SMOTEMultiClassBalancer(Transformer):
             self.converted_index += 1
 
     def dataframe_creator(self):
-        synthetic_data_rdd = sc.parallelize(self.converted_feature_array)
+        synthetic_data_rdd = self.spark_context.parallelize(self.converted_feature_array)
         label = self.minority_class
         synthetic_data_rdd_pipelined = synthetic_data_rdd.map(lambda x: Row(features=x, label=label))
         synthetic_dataframe = synthetic_data_rdd_pipelined.toDF()
