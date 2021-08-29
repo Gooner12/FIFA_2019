@@ -81,7 +81,7 @@ class ValueImputer(Transformer):
         self.variation_list = []
         super(ValueImputer, self).__init__()
 
-    def _transform(self, df: DataFrame) -> DataFrame:
+    def variation_calculator(self):
         # calculating the percentage change in players' values
         df_diff = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNotNull()))
         df_diff = df_diff.withColumn('Variation', \
@@ -94,26 +94,30 @@ class ValueImputer(Transformer):
         self.variation_list = self.variation_list + [age_under_21_float]
 
         age_21_to_25 = \
-        df_diff.filter((F.col('Age') > 20) & (F.col('Age') <= 25)).select(F.avg('Variation').alias('Avg')).collect()[
-            0]
+            df_diff.filter((F.col('Age') > 20) & (F.col('Age') <= 25)).select(
+                F.avg('Variation').alias('Avg')).collect()[
+                0]
         age_21_to_25_float = age_21_to_25['Avg']
         self.variation_list = self.variation_list + [age_21_to_25_float]
 
         age_26_to_30 = \
-        df_diff.filter((F.col('Age') > 25) & (F.col('Age') <= 30)).select(F.avg('Variation').alias('Avg')).collect()[
-            0]
+            df_diff.filter((F.col('Age') > 25) & (F.col('Age') <= 30)).select(
+                F.avg('Variation').alias('Avg')).collect()[
+                0]
         age_26_to_30_float = age_26_to_30['Avg']
         self.variation_list = self.variation_list + [age_26_to_30_float]
 
         age_31_to_35 = \
-        df_diff.filter((F.col('Age') > 30) & (F.col('Age') <= 35)).select(F.avg('Variation').alias('Avg')).collect()[
-            0]
+            df_diff.filter((F.col('Age') > 30) & (F.col('Age') <= 35)).select(
+                F.avg('Variation').alias('Avg')).collect()[
+                0]
         age_31_to_35_float = age_31_to_35['Avg']
         self.variation_list = self.variation_list + [age_31_to_35_float]
 
         age_36_to_40 = \
-        df_diff.filter((F.col('Age') > 35) & (F.col('Age') <= 40)).select(F.avg('Variation').alias('Avg')).collect()[
-            0]
+            df_diff.filter((F.col('Age') > 35) & (F.col('Age') <= 40)).select(
+                F.avg('Variation').alias('Avg')).collect()[
+                0]
         age_36_to_40_float = age_36_to_40['Avg']
         self.variation_list = self.variation_list + [age_36_to_40_float]
 
@@ -122,6 +126,10 @@ class ValueImputer(Transformer):
         if (age_greater_40_float is None):
             age_greater_40_float = 0
         self.variation_list = self.variation_list + [age_greater_40_float]
+        return self.variation_list
+
+    def _transform(self, df: DataFrame) -> DataFrame:
+        self.variation_calculator()
 
         # selecting the portion of the dataframe that has missing values in 2021 but not in 2019 for same records
         df_2019_not_null = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNull()))
@@ -129,33 +137,33 @@ class ValueImputer(Transformer):
         # imputing the missing values in Values_2021(M) for different age groups based on the value growth seen for respective groups
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', F.when(F.col('Age') <= 20, \
                                                                                F.round(
-                                                                                   F.col('Value_2019(M)') * (1 + age_under_21_float),
+                                                                                   F.col('Value_2019(M)') * (1 + self.variation_list[0]),
                                                                                    3)). \
                                                        otherwise(F.col('Value_2021(M)')))
 
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', \
                                                        F.when((F.col('Age') > 20) & (F.col('Age') <= 25),
-                                                              F.round(F.col('Value_2019(M)') * (1 + age_21_to_25_float), 3)). \
+                                                              F.round(F.col('Value_2019(M)') * (1 + self.variation_list[1]), 3)). \
                                                        otherwise(F.col('Value_2021(M)')))
 
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', \
                                                        F.when((F.col('Age') > 25) & (F.col('Age') <= 30),
-                                                              F.round(F.col('Value_2019(M)') * (1 + age_26_to_30_float), 3)). \
+                                                              F.round(F.col('Value_2019(M)') * (1 + self.variation_list[2]), 3)). \
                                                        otherwise(F.col('Value_2021(M)')))
 
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', \
                                                        F.when((F.col('Age') > 30) & (F.col('Age') <= 35),
-                                                              F.round(F.col('Value_2019(M)') * (1 + age_31_to_35_float), 3)). \
+                                                              F.round(F.col('Value_2019(M)') * (1 + self.variation_list[3]), 3)). \
                                                        otherwise(F.col('Value_2021(M)')))
 
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', \
                                                        F.when((F.col('Age') > 35) & (F.col('Age') <= 40),
-                                                              F.round(F.col('Value_2019(M)') * (1 + age_36_to_40_float), 3)). \
+                                                              F.round(F.col('Value_2019(M)') * (1 + self.variation_list[4]), 3)). \
                                                        otherwise(F.col('Value_2021(M)')))
 
         df_2019_not_null = df_2019_not_null.withColumn('Value_2021(M)', \
                                                        F.when(F.col('Age') > 40, \
-                                                              F.round(F.col('Value_2019(M)') * (1+ age_greater_40_float))). \
+                                                              F.round(F.col('Value_2019(M)') * (1 + self.variation_list[5]))). \
                                                        otherwise(F.col('Value_2021(M)')))
 
         # selecting a portion of the dataframe where players values are missing in both 2019 and 2021
@@ -167,32 +175,32 @@ class ValueImputer(Transformer):
         # imputing the missing values in Values_2019(M) for different age groups based on the value growth seen for respective groups
         df_2021_not_null = df_2021_not_null.withColumn('Value_2019(M)', F.when(F.col('Age') <= 20, \
                                                                                F.round(
-                                                                                   F.col('Value_2021(M)') / (1 + age_under_21_float),
+                                                                                   F.col('Value_2021(M)') / (1 + self.variation_list[0]),
                                                                                    3)). \
                                                        otherwise(F.col('Value_2019(M)')))
 
         df_2021_not_null = df_2021_not_null.withColumn('Value_2019(M)', \
                                                        F.when((F.col('Age') > 20) & (F.col('Age') <= 25), \
-                                                              F.round(F.col('Value_2021(M)') / (1 + age_21_to_25_float), 3)). \
+                                                              F.round(F.col('Value_2021(M)') / (1 + self.variation_list[1]), 3)). \
                                                        otherwise(F.col('Value_2019(M)')))
 
         df_2021_not_null = df_2021_not_null.withColumn('Value_2019(M)', \
                                                        F.when((F.col('Age') > 25) & (F.col('Age') <= 30), \
-                                                              F.round(F.col('Value_2021(M)') / (1 + age_26_to_30_float), 3)). \
+                                                              F.round(F.col('Value_2021(M)') / (1 + self.variation_list[2]), 3)). \
                                                        otherwise(F.col('Value_2019(M)')))
 
         df_2021_not_null = df_2021_not_null.withColumn('Value_2019(M)', \
                                                        F.when((F.col('Age') > 30) & (F.col('Age') <= 35), \
-                                                              F.round(F.col('Value_2021(M)') / (1 + age_31_to_35_float), 3)). \
+                                                              F.round(F.col('Value_2021(M)') / (1 + self.variation_list[3]), 3)). \
                                                        otherwise(F.col('Value_2019(M)')))
 
         df_2021_not_null = df_2021_not_null.withColumn('Value_2019(M)', \
                                                        F.when((F.col('Age') > 35) & (F.col('Age') <= 40), \
-                                                              F.round(F.col('Value_2021(M)') / (1 + age_36_to_40_float), 3)). \
+                                                              F.round(F.col('Value_2021(M)') / (1 + self.variation_list[4]), 3)). \
                                                        otherwise(F.col('Value_2019(M)')))
 
         df_2021_not_null = df_2021_not_null.withColumn('Value_2019(M)', F.when(F.col('Age') > 40, \
-                                                                               F.round(F.col('Value_2021(M)') / (1+age_greater_40_float))). \
+                                                                               F.round(F.col('Value_2021(M)') / (1 + self.variation_list[5]))). \
                                                        otherwise(F.col('Value_2019(M)')))
 
         # selecting a portion of the dataframe where no missing values are present in both 2019 and 2021 for players
@@ -201,4 +209,4 @@ class ValueImputer(Transformer):
 
         regression_df = final_df.na.drop(subset=['Value_2019(M)'])
 
-        return regression_df, self.variation_list
+        return regression_df
