@@ -81,7 +81,7 @@ class ValueImputer(Transformer):
         self.variation_list = []
         super(ValueImputer, self).__init__()
 
-    def variation_calculator(self):
+    def variation_calculator(self, df):
         # calculating the percentage change in players' values
         df_diff = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNotNull()))
         df_diff = df_diff.withColumn('Variation', \
