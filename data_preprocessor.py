@@ -7,7 +7,7 @@ from pyspark.sql import functions as F
 class ValueManipulator(Transformer):
     """
     A custom transformer which converts the unit of players' values in 2021 to millions and changes the names
-    of columns in a dataframe to ease the differencing of common columns, such as potential, overall and
+    of columns in a dataframe to ease the differentiation of common columns, such as potential, overall and
     value, based on the year in which the values are recorded.
     """
 
@@ -78,6 +78,7 @@ class ValueImputer(Transformer):
     """
 
     def __init__(self):
+        self.variation_list = []
         super(ValueImputer, self).__init__()
 
     def _transform(self, df: DataFrame) -> DataFrame:
@@ -90,31 +91,37 @@ class ValueImputer(Transformer):
         # finding the average variation level for different age groups
         age_under_21 = df_diff.filter((F.col('Age') <= 20)).select(F.avg('Variation').alias('Avg')).collect()[0]
         age_under_21_float = age_under_21['Avg']
+        self.variation_list = self.variation_list + [age_under_21_float]
 
         age_21_to_25 = \
         df_diff.filter((F.col('Age') > 20) & (F.col('Age') <= 25)).select(F.avg('Variation').alias('Avg')).collect()[
             0]
         age_21_to_25_float = age_21_to_25['Avg']
+        self.variation_list = self.variation_list + [age_21_to_25_float]
 
         age_26_to_30 = \
         df_diff.filter((F.col('Age') > 25) & (F.col('Age') <= 30)).select(F.avg('Variation').alias('Avg')).collect()[
             0]
         age_26_to_30_float = age_26_to_30['Avg']
+        self.variation_list = self.variation_list + [age_26_to_30_float]
 
         age_31_to_35 = \
         df_diff.filter((F.col('Age') > 30) & (F.col('Age') <= 35)).select(F.avg('Variation').alias('Avg')).collect()[
             0]
         age_31_to_35_float = age_31_to_35['Avg']
+        self.variation_list = self.variation_list + [age_31_to_35_float]
 
         age_36_to_40 = \
         df_diff.filter((F.col('Age') > 35) & (F.col('Age') <= 40)).select(F.avg('Variation').alias('Avg')).collect()[
             0]
         age_36_to_40_float = age_36_to_40['Avg']
+        self.variation_list = self.variation_list + [age_36_to_40_float]
 
         age_greater_40 = df_diff.filter((F.col('Age') > 40)).select(F.avg('Variation').alias('Avg')).collect()[0]
         age_greater_40_float = age_greater_40['Avg']
         if (age_greater_40_float is None):
             age_greater_40_float = 0
+        self.variation_list = self.variation_list + [age_greater_40_float]
 
         # selecting the portion of the dataframe that has missing values in 2021 but not in 2019 for same records
         df_2019_not_null = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNull()))
@@ -194,4 +201,4 @@ class ValueImputer(Transformer):
 
         regression_df = final_df.na.drop(subset=['Value_2019(M)'])
 
-        return regression_df
+        return regression_df, self.variation_list
