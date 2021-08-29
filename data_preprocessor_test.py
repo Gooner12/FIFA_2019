@@ -161,4 +161,5 @@ class ValueImputer(Transformer):
 
         regression_df = final_df.na.drop(subset=['Value_2019(M)'])
 
-        return regression_df, self.variation_list
+        return regression_df
+    
