@@ -7,6 +7,7 @@ class MultiCollinearityRemover():
   def __init__(self, vif_threshold=5):
     self.vif_threshold = vif_threshold
     self.max_col_index = 10000 # setting an arbitrary value
+    self.removed_cols = []
     super(MultiCollinearityRemover, self).__init__()
 
   def vif_setter(self, df):
@@ -19,10 +20,14 @@ class MultiCollinearityRemover():
     while vif_max > 5:
       vif_max, max_col_index = self.vif_calc(df, col_names, vif_max, self.max_col_index, self.vif_threshold)
       if vif_max > self.vif_threshold:
-        print('The removed column is ',df[max_col_index])
+        print('The removed column is',df[max_col_index])
+        self.removed_cols = self.removed_cols + [df[max_col_index]]
         df = df.drop(df[max_col_index])
         col_names = df.columns
       else:
+        if len(self.removed_cols) > 0:
+          print('Removed columns: ',*[self.removed_cols])
+          print('The dataframe has %d rows and %d columns after removing collinear features'%(df.count(), len(col_names)))
         return df
 
 
