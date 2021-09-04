@@ -27,7 +27,7 @@ class MultiCollinearityRemover():
       else:
         if len(self.removed_cols) > 0:
           print('Removed columns: ',*[self.removed_cols])
-          print('The dataframe has %d rows and %d columns after removing collinear features'%(df.count(), len(col_names)))
+          print('The dataframe has %d rows and %d columns after removing collinear features.'%(df.count(), len(col_names)))
         return df
 
 
@@ -38,7 +38,6 @@ class MultiCollinearityRemover():
     for i in range(0,len(col_names)):
       # creating a feature vector with one independent variable as a target
       temp_df = df.rdd.map(lambda x: [Vectors.dense(x[0:i]+x[i+1:]), x[i]]).toDF(['features', 'label'])
-      temp_df.show(5)
       lr = LinearRegression(featuresCol = 'features', labelCol = 'label')
       lr_model = lr.fit(temp_df)
       predictions = lr_model.transform(temp_df)
