@@ -83,6 +83,7 @@ class ValueImputer(Transformer):
         self.categories = ['under', 'between', 'between', 'between', 'between', 'over']
         super(ValueImputer, self).__init__()
 
+
     def imputer(self, df, category, year,  age1, age2=None):
         if(year == 2021):
             true_operator = operator.mul
