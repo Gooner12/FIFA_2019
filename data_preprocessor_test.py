@@ -46,10 +46,6 @@ class UnifyValue(Transformer):
         # removing goalkeepers from the dataframe
         df = df.filter(df['Position'] != 'GK')
 
-        # replacing null values in new potential column with zero as we indicate these players as no future growth players later
-        # df = df.withColumn('Potential_2021',F.when(F.col('Potential_2021').isNull(),0).otherwise(F.col('Potential_2021')))
-        df = df.fillna(0, subset=['Potential_2021'])
-
         # standardising the values of players to millions as there are players whose values are indicated in K
         df_k = df.filter(df['Value_2019(M)'].contains('K'))
         df_non_k = df.filter(~df['Value_2019(M)'].contains('K'))
@@ -77,38 +73,40 @@ class ValueImputer(Transformer):
     values for 2019 are imputed. All these operations are performed in segments which are finally concatenated.
     """
 
-    def __init__(self, variation_list):
-        # populating the list from the variations obatained from the test data
+    def __init__(self, variation_list, col1, col2, num):
         self.variation_list = variation_list
+        self.col1 = col1
+        self.col2 = col2
+        self.num = num
+        self.age_1 = [20,20,25,30,35,40]
+        self.age_2 = [None,25,30,35,40,None]
+        self.categories = ['under', 'between', 'between', 'between', 'between', 'over']
         super(ValueImputer, self).__init__()
 
     def imputer(self, df, category, year,  age1, age2=None):
         if(year == 2021):
             true_operator = operator.mul
             # selecting the portion of the dataframe that has missing values in 2021 but not in 2019 for same records
-            true_df = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNull()))
-            col_name1 = 'Value_2019(M)'
-            col_name2 = 'Value_2021(M)'
+            true_df = df.filter((F.col(self.col1).isNotNull()) & (F.col(self.col2).isNull()))
+            col_name1 = self.col1
+            col_name2 = self.col2
         elif(year == 2019):
             true_operator = operator.truediv
             # selecting a portion of the dataframe where missing values are present in 2019 but not in 2021
-            true_df = df.filter((F.col('Value_2019(M)').isNull()) & (F.col('Value_2021(M)').isNotNull()))
-            col_name1 = 'Value_2021(M)'
-            col_name2 = 'Value_2019(M)'
+            true_df = df.filter((F.col(self.col1).isNull()) & (F.col(self.col2).isNotNull()))
+            col_name1 = self.col2
+            col_name2 = self.col1
 
         if(category == 'under'):
-            if(age2 is None):
-                # imputing the missing values in the required column for different age groups based on the value growth seen for respective groups
-                true_df = true_df.withColumn(col_name2, F.when(F.col('Age') <= age1, \
-                                                                                       F.round(true_operator(
-                                                                                           F.col(col_name1), (1 +
-                                                                                                                     self.variation_list[
-                                                                                                                         0])),
-                                                                                           3)). \
-                                                               otherwise(F.col(col_name2)))
-                true_df = true_df.filter(F.col('Age') <= age1)
-            else:
-                raise ValueError('Age2 can be used only in between category')
+            # imputing the missing values in the required column for different age groups based on the value growth seen for respective groups
+            true_df = true_df.withColumn(col_name2, F.when(F.col('Age') <= age1, \
+                                                                                    F.round(true_operator(
+                                                                                        F.col(col_name1), (1 +
+                                                                                                                  self.variation_list[
+                                                                                                                      0])),
+                                                                                        3)). \
+                                                            otherwise(F.col(col_name2)))
+            true_df = true_df.filter(F.col('Age') <= age1)
 
         elif(category == 'between'):
             if(age2 == 25):
@@ -119,57 +117,56 @@ class ValueImputer(Transformer):
                 index = 3
             elif(age2 == 40):
                 index = 4
-            if(age2 is not None):
-                true_df  = true_df.withColumn(col_name2, \
+            true_df  = true_df.withColumn(col_name2, \
                                                                F.when((F.col('Age') > age1) & (F.col('Age') <= age2),
                                                                       F.round(true_operator(F.col(col_name1), (
                                                                                   1 + self.variation_list[index])), 3)). \
                                                                otherwise(F.col(col_name2)))
-                true_df = true_df.filter((F.col('Age') > age1) & (F.col('Age') <= age2))
-            else:
-                raise ValueError('Age2 is required for between category')
+            true_df = true_df.filter((F.col('Age') > age1) & (F.col('Age') <= age2))
 
         elif(category == 'over'):
-            if(age2 is None):
-                true_df  = true_df.withColumn(col_name2, \
+            true_df  = true_df.withColumn(col_name2, \
                                                                F.when(F.col('Age') > age1, \
                                                                       F.round(true_operator(F.col(col_name1), (
                                                                                   1 + self.variation_list[5])),3)). \
                                                                otherwise(F.col(col_name2)))
-                true_df = true_df.filter(F.col('Age') > age1)
-            else:
-                raise ValueError('Age2 can be used only in between category')
+            true_df = true_df.filter(F.col('Age') > age1)
         return true_df
 
+    def impute_separator(self, df, year):
+        imputed_df = []
+        for i, j, k in zip(self.age_1, self.age_2, self.categories):
+          df_2019_not_null = self.imputer(df, category=k, year=year, age1=i, age2=j)
+          imputed_df = imputed_df + [df_2019_not_null]
+        df_not_null = self.dataframe_unifier(imputed_df)
+        return df_not_null
+
+    def dataframe_unifier(self, complete_dataframe_list):
+        # taking out the last item in the list for merging later
+        temp_df = complete_dataframe_list.pop(len(complete_dataframe_list) - 1)
+        # merging all the dataframes in a given list
+        for i in range(len(complete_dataframe_list)):
+            if (len(complete_dataframe_list) > 0):
+                temp_df = temp_df.unionAll(complete_dataframe_list.pop(len(complete_dataframe_list) - 1))
+        return temp_df
 
 
     def _transform(self, df: DataFrame) -> DataFrame:
-        df_2019_not_null_a = self.imputer(df, 'under', year=2021, age1=20)
-        df_2019_not_null_b = self.imputer(df, 'between', year=2021, age1=20, age2=25)
-        df_2019_not_null_c = self.imputer(df, 'between', year=2021, age1=25, age2=30)
-        df_2019_not_null_d = self.imputer(df, 'between', year=2021, age1=30, age2=35)
-        df_2019_not_null_e = self.imputer(df, 'between', year=2021, age1=35, age2=40)
-        df_2019_not_null_f = self.imputer(df, 'over', year=2021, age1=40)
-        df_2019_not_null = df_2019_not_null_a.union(df_2019_not_null_b).union(df_2019_not_null_c).\
-        union(df_2019_not_null_d).union(df_2019_not_null_e).union(df_2019_not_null_f)
-
-        df_2021_not_null_a = self.imputer(df, 'under', year=2019, age1=20)
-        df_2021_not_null_b = self.imputer(df, 'between', year=2019, age1=20, age2=25)
-        df_2021_not_null_c = self.imputer(df, 'between', year=2019, age1=25, age2=30)
-        df_2021_not_null_d = self.imputer(df, 'between', year=2019, age1=30, age2=35)
-        df_2021_not_null_e = self.imputer(df, 'between', year=2019, age1=35, age2=40)
-        df_2021_not_null_f = self.imputer(df, 'over', year=2019, age1=40)
-        df_2021_not_null = df_2021_not_null_a.union(df_2021_not_null_b).union(df_2021_not_null_c).\
-        union(df_2021_not_null_d).union(df_2021_not_null_e).union(df_2021_not_null_f)
-
         # selecting a portion of the dataframe where players values are missing in both 2019 and 2021
-        df_both_null = df.filter(((F.col('Value_2019(M)').isNull()) & (F.col('Value_2021(M)').isNull())))
-
+        df_both_null = df.filter(((F.col(self.col1).isNull()) & (F.col(self.col2).isNull())))
         # selecting a portion of the dataframe where no missing values are present in both 2019 and 2021 for players
-        df_both_not_null = df.filter((F.col('Value_2019(M)').isNotNull()) & (F.col('Value_2021(M)').isNotNull()))
+        df_both_not_null = df.filter((F.col(self.col1).isNotNull()) & (F.col(self.col2).isNotNull()))
+        if self.num == 1:
+          df_2019_not_null = self.impute_separator(df, year=2021)
+          # we are not including records containing both null values, so we do not include df_both_null in the final dataframe
+          final_df = [df_2019_not_null] + [df_both_not_null]
+          final_df = self.dataframe_unifier(final_df)
 
-        # we are not including records containing both null values, so we do not include df_both_null in the final dataframe
-        final_df = df_both_not_null.union(df_2019_not_null).union(df_2021_not_null)
+        elif self.num == 2:
+          df_2019_not_null = self.impute_separator(df, year=2021)
+          df_2021_not_null = self.impute_separator(df, year=2019)
+          final_df = [df_2019_not_null] + [df_2021_not_null] + [df_both_not_null]
+          final_df = self.dataframe_unifier(final_df)
 
         regression_df = final_df
 
