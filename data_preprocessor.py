@@ -1,4 +1,5 @@
 from pyspark.ml import Transformer
+from pyspark.ml.pipeline import Estimator
 from pyspark.sql import DataFrame
 from pyspark.sql import functions as F
 import operator
@@ -60,18 +61,9 @@ class UnifyValue(Transformer):
 
         # changing the datatype of Value_2019(M) column to float
         df = df.withColumn('Value_2019(M)', df['Value_2019(M)'].cast('float'))
-
         return df
 
-
-class ValueImputer(Transformer):
-    """
-    A custom transformer which imputes the missing values present in players values for both 2019 and 2021.
-    If there are values for 2019 but for same rows values are missing for 2021, then based on the growth for
-    a specific age group, missing values for 2021 are imputed according to growth on 2019 figures. Similarly,
-    if values are missing for 2019 but present in 2021, based on the growth level, using 2021 values, missing
-    values for 2019 are imputed. All these operations are performed in segments which are finally concatenated.
-    """
+class ValueImputer(Estimator):
 
     def __init__(self, col1, col2, num):
         self.variation_list = []
@@ -108,16 +100,34 @@ class ValueImputer(Transformer):
         self.variation_list = self.variation_list + [age_group_float]
         #return age_group_float
 
-
     def variation_calculator(self, df):
         # finding the average variation level for different age groups
         for i, j, k in zip(self.age_1, self.age_2, self.categories):
           self.variation_age(df, k, self.col1, self.col2, i, j)
-        index = 1
-        for i in range(len(self.variation_list)):
-            print('The age bracket %d has average variation of %f' % (index, self.variation_list[i]))
-            index += 1
-        #return self.variation_list
+
+    def _fit(self, df:DataFrame):
+        self.variation_calculator(df)
+        return ValueTransformer(self.col1, self.col2, self.num, self.variation_list)
+
+
+class ValueTransformer(Transformer):
+    """
+    A custom transformer which imputes the missing values present in players values for both 2019 and 2021.
+    If there are values for 2019 but for same rows values are missing for 2021, then based on the growth for
+    a specific age group, missing values for 2021 are imputed according to growth on 2019 figures. Similarly,
+    if values are missing for 2019 but present in 2021, based on the growth level, using 2021 values, missing
+    values for 2019 are imputed. All these operations are performed in segments which are finally concatenated.
+    """
+
+    def __init__(self, col1, col2, num, variation_list):
+        self.variation_list = variation_list
+        self.col1 = col1
+        self.col2 = col2
+        self.num = num
+        self.age_1 = [20,20,25,30,35,40]
+        self.age_2 = [None,25,30,35,40,None]
+        self.categories = ['under', 'between', 'between', 'between', 'between', 'over']
+        super(ValueTransformer, self).__init__()
 
     def imputer(self, df, category, year,  age1, age2=None):
         if(year == 2021):
@@ -186,9 +196,8 @@ class ValueImputer(Transformer):
                 temp_df = temp_df.unionAll(complete_dataframe_list.pop(len(complete_dataframe_list) - 1))
         return temp_df
 
-
     def _transform(self, df: DataFrame) -> DataFrame:
-        self.variation_calculator(df)
+        #self.variation_calculator(df)
         # selecting a portion of the dataframe where players values are missing in both 2019 and 2021
         df_both_null = df.filter(((F.col(self.col1).isNull()) & (F.col(self.col2).isNull())))
         # selecting a portion of the dataframe where no missing values are present in both 2019 and 2021 for players
@@ -206,5 +215,4 @@ class ValueImputer(Transformer):
           final_df = self.dataframe_unifier(final_df)
 
         regression_df = final_df
-
         return regression_df
