@@ -29,6 +29,10 @@ This section is dedicated to listing the important learnings obtained from this 
 * Data wrangling.
 * Building custom estimators and transformers.
 
+## Limitations
+* This project does not deal with goalkeepers, which makes analysis of players suitable for goalkeeping positions inconclusive.
+* Identifying the potential of players would be more accurate if more data is available.
+
 ## Further Information
 The notebooks in this project have been developed in Google Colab. However, the notebooks can be run in Jupyter as well given that the configurations required for setting up this project are met, such as installation of pyspark and jdk.
 
