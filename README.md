@@ -36,4 +36,4 @@ This section is dedicated to listing the important learnings obtained from this 
 ## Further Information
 The notebooks in this project have been developed in Google Colab. However, the notebooks can be run in Jupyter as well given that the configurations required for setting up this project are met, such as installation of pyspark and jdk.
 
-<b><i>Note:</b></i> This is an ongoing project and is currently in the deployment phase.
+<b><i>Note:</b></i> Please view the notebooks in google collab to see the results and steps in a prettier format.
