@@ -27,6 +27,7 @@ This section is dedicated to listing the important learnings obtained from this 
 * Extended the SMOTE technique for over/ undersampling of datasets containing more than two classes in PySpark.
 * Development of Variation Inflation Factor (VIF) detector to remove multicollinearity in PySpark.
 * Data wrangling.
+* Generated micro focused target labels based on the business rule for classification tasks, especially growth predict target labels.
 * Building custom estimators and transformers.
 
 ## Limitations
