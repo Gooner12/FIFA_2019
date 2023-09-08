@@ -27,8 +27,8 @@ class ValueManipulator(Transformer):
 
             # storing the dataframe with renamed columns based on years
 
-        names = [('Overall', 'Overall_2019'), ('Potential', 'Potential_2019'), ('overall', 'Overall_2021'), \
-                 ('potential', 'Potential_2021'), ('value(M)', 'Value_2019(M)'), ('value_eur', 'Value_2021(M)')]
+        names = [('Overall', 'Overall_2019'), ('Potential', 'Potential_2019'), ('overall_2021', 'Overall_2021'), \
+                 ('potential_2021', 'Potential_2021'), ('value(M)', 'Value_2019(M)'), ('value_eur', 'Value_2021(M)')]
         df = rename_col(df, dict(names))
         return df
 
